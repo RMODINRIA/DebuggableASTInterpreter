@@ -19,12 +19,33 @@ on:
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
+  buildP11:
+    strategy:
+        matrix:
+          os: [ ubuntu-latest ]
+          smalltalk: [ Pharo64-11 ]
+    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.smalltalk }} on ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2 # or 3
+      - name: Setup smalltalkCI
+        uses: hpi-swa/setup-smalltalkCI@v1
+        with:
+          smalltalk-version: ${{ matrix.smalltalk }}
+      - name: Load Image and Run Release Tests
+        run: smalltalkci -s ${{ matrix.smalltalk }} .smalltalk.release.ston
+        timeout-minutes: 10
+      - name: Clean Up
+        run: rm -Rf ${{ env.SMALLTALK_CI_BUILD }}
+      - name: Load Image and Run Tests
+        run: smalltalkci -s ${{ matrix.smalltalk }} .smalltalk.all.ston
+        timeout-minutes: 30
   # This workflow contains a single job called "build"
   build:
     strategy:
         matrix:
           os: [ ubuntu-latest ]
-          smalltalk: [ Pharo64-11 Pharo64-12 ]
+          smalltalk: [ Pharo64-12 ]
     runs-on: ${{ matrix.os }}
     name: ${{ matrix.smalltalk }} on ${{ matrix.os }}
     steps:
