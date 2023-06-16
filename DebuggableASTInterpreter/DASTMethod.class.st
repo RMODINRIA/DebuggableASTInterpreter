@@ -14,6 +14,12 @@ DASTMethod >> bodyOffset [
 ]
 
 { #category : #accessing }
+DASTMethod >> compiledCode [
+
+	^ self nodeAST compiledMethod
+]
+
+{ #category : #accessing }
 DASTMethod >> evaluatePrimitive [
 	^ evaluatePrimitive ifNil: [ evaluatePrimitive := true ]
 ]
@@ -81,7 +87,7 @@ DASTMethod >> isNamedPrimitive [
 
 { #category : #testing }
 DASTMethod >> isNoMethod [
-	^ self selector = #noMethod 
+	^ self selector = #DoIt 
 ]
 
 { #category : #accessing }

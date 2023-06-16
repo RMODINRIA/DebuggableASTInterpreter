@@ -19,9 +19,27 @@ DASTContextRootSmalltalk >> allTemps [
 ]
 
 { #category : #accessing }
+DASTContextRootSmalltalk >> arguments [
+
+	^ {  } asOrderedCollection
+]
+
+{ #category : #converting }
+DASTContextRootSmalltalk >> asContext [
+
+	^ [ Processor terminateRealActive] asContext
+]
+
+{ #category : #accessing }
 DASTContextRootSmalltalk >> assignVariable: name value: value [
 	(self findVariable: name)
 	   ifNotNil: [ self evaluator environment setGlobal: name value: value. ^ true ].
+	^ false
+]
+
+{ #category : #testing }
+DASTContextRootSmalltalk >> belongsToDoIt [
+
 	^ false
 ]
 
@@ -61,6 +79,14 @@ DASTContextRootSmalltalk >> isUnwindContext [
 { #category : #accessing }
 DASTContextRootSmalltalk >> methodClass [
 	^ nil
+]
+
+{ #category : #converting }
+DASTContextRootSmalltalk >> privCopyStackInContext: newContext [
+
+	"nothing to copy when self isRoot"
+
+	
 ]
 
 { #category : #'gt-extension' }

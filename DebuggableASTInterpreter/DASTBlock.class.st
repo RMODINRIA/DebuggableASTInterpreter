@@ -2,7 +2,8 @@ Class {
 	#name : #DASTBlock,
 	#superclass : #DASTClosure,
 	#instVars : [
-		'interval'
+		'interval',
+		'pharoOuterContext'
 	],
 	#category : #'DebuggableASTInterpreter-Closures'
 }
@@ -27,6 +28,27 @@ DASTBlock >> basicClass [
 { #category : #'source code' }
 DASTBlock >> bodyOffset [
 	^ self outerContext methodOrBlock bodyOffset
+]
+
+{ #category : #accessing }
+DASTBlock >> closure [
+
+	^ FullBlockClosure new
+		  compiledBlock: self nodeAST ir compiledMethod;
+		  receiver: self outerContext receiver;
+		  numArgs: self nodeAST numArgs;
+		  outerContext: self pharoOuterContext "closure ifNil: [ ""self nodeAST evaluate"
+	"closure := Smalltalk compiler
+			             source: self sourceCode;
+			             context: self outerContext;
+			             receiver: self outerContext receiver;
+			             evaluate ]"
+]
+
+{ #category : #accessing }
+DASTBlock >> compiledCode [
+
+	^ self nodeAST ir compiledMethod
 ]
 
 { #category : #accessing }
@@ -116,7 +138,19 @@ DASTBlock >> outerContext [
 { #category : #accessing }
 DASTBlock >> outerContext: aDASTContext [
 	outerContext := aDASTContext.
-	self initializeInterval
+	"self initializeInterval"
+]
+
+{ #category : #accessing }
+DASTBlock >> pharoOuterContext [
+
+	^ pharoOuterContext
+]
+
+{ #category : #accessing }
+DASTBlock >> pharoOuterContext: anObject [
+
+	pharoOuterContext := anObject
 ]
 
 { #category : #accessing }

@@ -15,9 +15,16 @@ DASTBlockContext >> allInstVars [
 
 { #category : #'accessing - private' }
 DASTBlockContext >> allTemps [
-	^ self variablesDict associations ,
-	  closure outerContext allTemps , 
-	  sender allTemps 
+
+	self flag: 'I really think that this statement duplicates temps'.
+	^ self variablesDict associations ", closure outerContext allTemps"
+	  , sender allTemps
+]
+
+{ #category : #testing }
+DASTBlockContext >> belongsToDoIt [
+	self flag: 'wrong imoplementation, to fix'.
+	^false
 ]
 
 { #category : #initialization }
@@ -49,12 +56,18 @@ DASTBlockContext >> initializeContext [
 		ifFalse: [ self getClassForLookup ].
 	"
 	visitor := DASTPostOrderTreeVisitor new.
-	receiver body acceptVisitor: visitor.
+	receiver "compiledBlock ast" body acceptVisitor: visitor.
 	nodes := visitor stack.
 	currentNode := nodes top.
 	self 	methodOrBlock: receiver;
 			nodes: nodes.
 	
+]
+
+{ #category : #helpers }
+DASTBlockContext >> ir [
+
+	^ self methodOrBlock nodeAST ir
 ]
 
 { #category : #initialization }

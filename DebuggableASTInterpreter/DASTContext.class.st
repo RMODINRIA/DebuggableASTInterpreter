@@ -23,33 +23,44 @@ Class {
 		'isDead'
 	],
 	#classVars : [
+		'BcToDASTContextMap',
 		'valueToBlockMessages'
 	],
 	#category : #'DebuggableASTInterpreter-Contexts'
 }
 
+{ #category : #'as yet unclassified' }
+DASTContext class >> bcToDASTContextMap [
+
+	^ BcToDASTContextMap ifNil: [ BcToDASTContextMap := WeakIdentityKeyDictionary new ]
+]
+
 { #category : #instantiation }
 DASTContext class >> newNoMethodContextWithProgram: aRBNode temps: aCollection evaluator: anEvaluator [
 	"special context for the first call"
+
 	| nodes rootContext noMethod |
-	
 	nodes := DASTPostOrderTreeVisitor new flattenedNodesFrom: aRBNode.
-	
-	rootContext := DASTContextRootSmalltalk new 
-		evaluator: anEvaluator;
-		yourself.
-	
-	noMethod := (DASTMethod new initializeWith: nodes last methodNode evaluator: anEvaluator).
+
+	rootContext := DASTContextRootSmalltalk new
+		               evaluator: anEvaluator;
+		               currentNode: (RBMessageNode
+				                receiver: (RBLiteralValueNode value: nil)
+				                selector: #value) yourself.
+
+	noMethod := DASTNoMethod new
+		            initializeWith: nodes last methodNode
+		            evaluator: anEvaluator.
 	" Set the first method (noMethod) context evaluation. The receiver is nil "
 	^ DASTMethodContext new
-		receiver: anEvaluator nilObject;
-		parent: rootContext;
-		methodOrBlock: noMethod;
-		nodes: nodes;
-		sender: rootContext;
-		temps: aCollection;
-		evaluator: anEvaluator;
-		yourself.
+		  receiver: anEvaluator nilObject;
+		  parent: rootContext;
+		  methodOrBlock: noMethod;
+		  nodes: nodes;
+		  sender: rootContext;
+		  temps: aCollection;
+		  evaluator: anEvaluator;
+		  yourself
 ]
 
 { #category : #instantiation }
@@ -95,6 +106,32 @@ DASTContext >> allTemps [
 	self subclassResponsibility 
 ]
 
+{ #category : #accessing }
+DASTContext >> arguments [
+
+	^ (self methodOrBlock nodeAST arguments collect: [ :each | each name ]) 
+		  collect: [ :each | (self findLocalVariable: each) value ]
+]
+
+{ #category : #converting }
+DASTContext >> asContext [
+
+	| newContext nextNode nextPC nextNodes |
+	newContext := self privAsContext.
+	nextNodes := self nodes copy.
+
+	"We need to change pc"
+	nextPC := nil.
+	[ nextPC ] whileNil: [ 
+		nextNode := nextNodes pop.
+		nextPC := self methodOrBlock nodeAST firstPcForNode: nextNode ].
+	newContext pc: nextPC.
+
+	"We need to rebuild the stack"
+	self privCopyStackInContext: newContext.
+	^ newContext
+]
+
 { #category : #'API-lookup' }
 DASTContext >> assignVariable: name value: value [
 	"Temporary variables assignment"
@@ -125,6 +162,17 @@ DASTContext >> at: aByteSymbol put: anObject [
 	^self variablesDict at: aByteSymbol put: anObject.
 	
 	
+]
+
+{ #category : #'as yet unclassified' }
+DASTContext >> bcValueForAnObject: anObject forContext: newContext [
+
+	| bcValue |
+	anObject isBlock ifTrue: [
+		anObject pharoOuterContext ifNil: [
+			anObject pharoOuterContext: newContext ] ].
+	bcValue := anObject dastToBcValue.
+	^ bcValue
 ]
 
 { #category : #testing }
@@ -426,14 +474,21 @@ DASTContext >> hasSender: context [
 
 { #category : #initialization }
 DASTContext >> initialize [
+
 	super initialize.
 	stack := DASTStack new.
 	executedNodes := DASTStack new.
 	nodes := DASTStack new.
 	currentNode := nil.
-	variablesDict := Dictionary new.
+	variablesDict := OrderedDictionary new.
 	tempVarsNamesIndexes := Dictionary new.
 	tempVarIndex := 0
+]
+
+{ #category : #helpers }
+DASTContext >> ir [
+
+	self subclassResponsibility
 ]
 
 { #category : #testing }
@@ -587,15 +642,70 @@ DASTContext >> parent: aDASTContext [
 
 { #category : #accessing }
 DASTContext >> printOn: aStream [
-	"aStream
+	aStream
 		cr;
 		nextPutAll: (receiver ifNotNil: [ receiver asString ] ifNil: [ 'nil' ]);
 		nextPutAll: ' <- ';
-		nextPutAll: (closure ifNotNil: [ closure selector asString ] ifNil: ['nil'])."
-		
+		nextPutAll: (closure ifNotNil: [ closure selector asString ] ifNil: ['nil']).
+	"	
 	aStream
-		nextPutAll: 'DAST Context standard'
+		nextPutAll: 'DAST Context standard'"
 		
+]
+
+{ #category : #converting }
+DASTContext >> privAsContext [
+
+	^ (Context newForMethod: self method)
+		  setSender: self sender asContext
+		  receiver: self receiver
+		  method: self methodOrBlock compiledCode
+		  closure: self methodOrBlock closure
+		  startpc: self methodOrBlock compiledCode initialPC
+]
+
+{ #category : #converting }
+DASTContext >> privCopyStackInContext: newContext [
+
+	newContext stackp: 0.
+	(self ir tempMap associations sorted: [ :assoc1 :assoc2 |
+		 assoc1 value <= assoc2 value ]) do: [ :each |
+		| value |
+		[
+		value := (self allTemps detect: [ :tempAssoc |
+			          tempAssoc key == each key ]) value ]
+			on: NotFound
+			do: [ "newContext sender or newContext outerContext"
+				[ value := newContext sender tempNamed: each key ]
+					on: Error
+					do: [
+						| scope tempVector index |
+						scope := self methodOrBlock nodeAST scope.
+						self
+							assert: scope tempVector isEmpty not
+							description: 'Temp named ' , each key , ' is missing'.
+						tempVector := scope tempVector.
+						value := Array new: tempVector size.
+						index := 1.
+						tempVector keysDo: [ :key |
+							value
+								at: index
+								put:
+								(self
+									 bcValueForAnObject: (self tempNamed: key)
+									 forContext: newContext).
+							index := index + 1 ] ] ].
+		newContext push:
+			(self bcValueForAnObject: value forContext: newContext) ].
+	"(self variablesDict associations collect: [ :each |
+		 | value |
+		 value := each value.
+		 value isBlock
+			 ifFalse: [ value ]
+			 ifTrue: [ value nodeAST evaluate ] ]) ,"
+	self stack do: [ :each |
+		newContext push:
+			(self bcValueForAnObject: each forContext: newContext) ]
 ]
 
 { #category : #accessing }
@@ -716,6 +826,11 @@ DASTContext >> stack: anObject [
 { #category : #'accessing - private' }
 DASTContext >> tempAt: anIndex [
 	^ self variablesDict at: (self variablesDict keys at: anIndex)
+]
+
+{ #category : #accessing }
+DASTContext >> temps: aCollection [ 
+	aCollection do: [ :assoc | self at: assoc key put: assoc value ]
 ]
 
 { #category : #'private-exceptions' }

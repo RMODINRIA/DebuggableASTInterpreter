@@ -19,6 +19,18 @@ DASTMethodContext >> allTemps [
 	^ self variablesDict associations
 ]
 
+{ #category : #accessing }
+DASTMethodContext >> arguments [
+
+	^ (self method ast arguments collect: [ :each | each name ]) collect: [ :each | (self findLocalVariable: each) value ]
+]
+
+{ #category : #testing }
+DASTMethodContext >> belongsToDoIt [
+
+	^ self methodOrBlock isNoMethod
+]
+
 { #category : #'API-lookup' }
 DASTMethodContext >> findLocalVariable: aName [
 	^ variablesDict 
@@ -78,6 +90,12 @@ DASTMethodContext >> initializeContext [
 	
 ]
 
+{ #category : #helpers }
+DASTMethodContext >> ir [
+
+	^ self methodOrBlock nodeAST compiledMethod ir
+]
+
 { #category : #initialization }
 DASTMethodContext >> isBlockContext [ 
 	^ false
@@ -120,9 +138,4 @@ DASTMethodContext >> printOn: aStream [
 DASTMethodContext >> removePrimitiveFromMethod [
 	
 	self methodOrBlock evaluatePrimitive: false
-]
-
-{ #category : #accessing }
-DASTMethodContext >> temps: aCollection [ 
-	aCollection do: [ :assoc | self at: assoc key put: assoc value ]
 ]
