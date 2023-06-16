@@ -407,6 +407,14 @@ DASTInterpreter >> visitLiteralVariableNode: aRBVariableNode [
 ]
 
 { #category : #visiting }
+DASTInterpreter >> visitLocalVariableNode: aNode [
+
+	"call visitTemporaryNode: for backward compatibility"
+
+	^ self visitTemporaryNode: aNode
+]
+
+{ #category : #visiting }
 DASTInterpreter >> visitMessageNode: aRBMessageNode [ 
 	| arguments receiver method newContext |
 	" Resolve Arguments "
