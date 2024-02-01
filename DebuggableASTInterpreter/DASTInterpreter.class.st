@@ -401,9 +401,19 @@ DASTInterpreter >> visitLiteralValueNode: aRBLiteralValueNode [
 ]
 
 { #category : #visiting }
-DASTInterpreter >> visitLiteralVariableNode: aRBVariableNode [
 
-	^ self visitGlobalNode: aRBVariableNode
+DASTInterpreter >> visitLiteralVariableNode: aNode [
+	"to be backward compatible, we visit for Gloabls here (there used to be no difference)"
+
+	^ self visitGlobalNode: aNode
+]
+
+{ #category : #visiting }
+DASTInterpreter >> visitLocalVariableNode: aNode [
+
+	"call visitTemporaryNode: for backward compatibility"
+
+	^ self visitTemporaryNode: aNode
 ]
 
 { #category : #visiting }

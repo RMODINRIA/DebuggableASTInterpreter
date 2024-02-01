@@ -38,7 +38,7 @@ DASTPostOrderTreeVisitor >> visitArgumentNode: aRBArgumentNode [
 ]
 
 { #category : #visiting }
-DASTPostOrderTreeVisitor >> visitArgumentVariableNode: aRBVariableNode [
+DASTPostOrderTreeVisitor >> visitArgumentVariableNode: aRBVariableNode [ 
 
 	^ self visitTemporaryNode: aRBVariableNode
 ]
@@ -108,9 +108,18 @@ DASTPostOrderTreeVisitor >> visitLiteralValueNode: aRBLiteralValueNode [
 ]
 
 { #category : #visiting }
-DASTPostOrderTreeVisitor >> visitLiteralVariableNode: aRBVariableNode [
+DASTPostOrderTreeVisitor >> visitLiteralVariableNode: aNode [
+	"to be backward compatible, we visit for Gloabls here (there used to be no difference)"
 
-	^ self visitGlobalNode: aRBVariableNode
+	^ self visitGlobalNode: aNode
+]
+
+{ #category : #visiting }
+DASTPostOrderTreeVisitor >> visitLocalVariableNode: aNode [
+
+	"call visitTemporaryNode: for backward compatibility"
+
+	^ self visitTemporaryNode: aNode
 ]
 
 { #category : #visiting }
@@ -157,7 +166,7 @@ DASTPostOrderTreeVisitor >> visitSuperNode: aRBSuperNode [
 	^ stack push: aRBSuperNode
 ]
 
-{ #category : #'as yet unclassified' }
+{ #category : #visiting }
 DASTPostOrderTreeVisitor >> visitTemporaryNode: aRBTemporaryNode [ 
 	stack push: aRBTemporaryNode
 ]
